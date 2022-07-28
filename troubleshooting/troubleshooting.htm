@@ -1,0 +1,666 @@
+<%
+    local fs = require "nixio.fs"
+    local ipc = require "luci.ip"
+    local util = require "luci.util"
+    local stat = require "luci.tools.status"
+    local ver = require "luci.version"
+
+    local refreshtoken = util.exec("uci get nwarp.member.refreshtoken")
+    refreshtoken = util.trim(refreshtoken)
+    local accesstoken = util.exec("uci get nwarp.member.accesstoken")
+    accesstoken = util.trim(accesstoken)
+    local machineCode = util.exec("fw_printenv -n SN")
+    machineCode = util.trim(machineCode)
+%>
+<%+header%>
+<style>
+        textarea:focus{
+            background-color: #282828;
+            border-color: #51fecf;
+            outline: 0;
+        }
+        .nwarp_text_highlight {
+            color: #51fecf;
+        }
+
+        .nwarp_text_normal {
+            color: white;
+        }
+
+        .nwarp_text_warning {
+            color: red;
+        }
+
+        .trouble_title {
+            width: 175px;
+            vertical-align: middle;
+            margin: 16px 8px;
+        }
+        .trouble_item {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            margin: 8px 0px;
+        }
+        .trouble_item_col {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            margin: 8px 0px;
+        }
+
+        .trouble_selects_selected {
+            color: #51fecf !important;
+        }
+    
+        
+        .trouble_selects {
+            color: gray;
+            padding: 5px;
+            overflow: hidden;
+            background: black;
+            outline: none;
+            margin: 4px;
+            height: 46px;
+            background-color: #282828;
+            background-clip: padding-box;
+            border: 1px solid #757575;
+            border-radius: 5px;
+        }
+
+        .trouble_plus_btn {
+            color: white;
+            border: 0;
+            width: 50px;
+            background: transparent;
+            text-align: center;
+            cursor: pointer;
+            height: 45px;
+            margin: 3px;
+        }
+        .trouble_submit_btn:focus {
+            outline: 0;
+            color: #212121;
+            background-color: #51fecf;
+            border-color: #51fecf;
+        }
+        .trouble_submit_btn:hover {
+            outline: 0;
+            color: #212121;
+            background-color: #51fecf;
+            border-color: #51fecf;
+        }
+    
+        .trouble_submit_btn {
+            outline: 0;
+            height: 50px;
+            background: transparent;
+            width: 150px;
+            border-radius: 50px;
+            color: #51fecf;
+            border: 1px solid #51fecf;
+            text-align: center;
+            cursor: pointer;
+            margin-top: 32px;
+            margin-bottom: 16px;
+            transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out,-webkit-box-shadow .15s ease-in-out;
+        }
+
+        .trouble_minus_btn {
+            color: white;
+            border: 0;
+            width: 50px;
+            //outline: none;
+            background: transparent;
+            text-align: center;
+            cursor: pointer;
+        height: 45px;   
+        margin: 4px;
+        }
+
+        .flex-fill {
+            -ms-flex: 1 1 auto !important;
+            flex: 1 1 auto !important;
+            width: 845px;
+            margin: 16px 0;
+        }
+        .trouble_name_textfield:disabled{
+            border: 0;
+            background: transparent;
+        }
+        .trouble_name_textfield {
+            color: #51fecf;
+            outline: 0;
+            background-color: #282828;
+            border: 1px solid #757575;
+            border-radius: 5px;
+            width: 540px;
+            margin: 4px;
+            text-indent: 10px;
+            height: 45px;
+        }
+    
+
+        .trouble_big_textfield {
+            color: #51fecf;
+            outline: 0;
+            line-height: 2;
+            width: 540px;
+            margin: 4px;
+            min-height: 38px;
+            background-color: #282828;
+            background-clip: padding-box;
+            border: 1px solid #757575;
+            border-radius: 5px;
+            padding: 0 10px;
+        }
+
+        .trouble_testnondisplay_textfield {
+            color: #51fecf;
+            outline: 0;
+            line-height: 2;
+            width: 110px;
+            margin: 4px;
+            margin-right: 6px;
+            text-align: center;
+            height: 42px;
+            background-color: #282828;
+            background-clip: padding-box;
+            border: 1px solid #757575;
+            border-radius: 5px;
+        }
+
+        .trouble_have_nondisplay_textfield {
+            color: #fff;
+            outline: 0;
+            background: transparent;
+            background-clip: padding-box;
+            border: 1px solid #51fecf;
+            border-radius: 5px;
+            line-height: 2;
+            width: 195px;
+            margin: 4px 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            user-select: none;
+            padding: 0 10px;
+            height: 45px;
+        }   
+    
+    
+    .trouble_scroll {
+        max-height: 106px;
+        overflow-y: scroll;
+    }
+    ::-webkit-scrollbar-corner {
+        display: none;
+    }
+
+    
+    .trouble_noselect{
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+    
+    .trouble_hr_left {
+        border: 0 !important;
+        height: 3px !important;
+        background-image: linear-gradient(to left, black, #51fecf , black) !important;
+        opacity: 1 !important;
+        width:340px;
+    }
+
+    .trouble_row_4g {
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        width: 1650px;
+        margin: auto;
+    }
+        .msg_dialog {
+        position: relative;
+        display: -ms-flexbox;
+        display: flex;
+        -ms-flex-direction: column;
+        flex-direction: column;
+        width: 100%;
+        pointer-events: auto;
+        background-color: #111;
+        background-clip: padding-box;
+        border: 1px solid rgba(0,0,0,.2);
+        border-radius: .3rem;
+        outline: 0;
+        color: #fff;
+    }
+    
+    .alert_msg,
+    .log_submit_msg {
+        margin: 32px 0 16px 0;
+    }
+    
+    .msg_header {
+        display: -ms-flexbox;
+        display: flex;
+        -ms-flex-align: start;
+        align-items: flex-start;
+        -ms-flex-pack: justify;
+        justify-content: center;
+        padding: 1rem;
+        border-top-left-radius: .3rem;
+        border-top-right-radius: .3rem;
+        font-size: 20pt;
+    }
+    
+    .msg_footer {
+        display: -ms-flexbox;
+        display: flex;
+        -ms-flex-align: center;
+        align-items: center;
+        -ms-flex-pack: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+    .msg_footer>:not(:last-child) {
+        margin-right: .25rem;
+    }
+    .msg_footer>:not(:first-child) {
+        margin-left: .25rem;
+    }
+    .btn-custom {
+        color: #fff;
+        background-color: transparent;
+        border: 1px solid #51fecf !important;
+        width: 92px !important;
+        height: 42px;
+    }
+    .btn-custom:hover {
+        color: #000;
+        background-color: #51fecf;
+        border-color: #51fecf;
+    }
+    .btn-custom:focus, .btn-custom.focus {
+        outline: 0;
+        box-shadow: unset;
+    }
+</style>
+
+
+<div class="trouble_row_4g">    
+<div id="trouble_outbox" class="outer_box border_4g" style="width:65%;align-items: unset;margin-bottom:32px">
+    <div class="d-flex nwarp_text_normal trouble_noselect" style="margin: 32px 0 0 0;">
+        <div class="d-flex flex-column" style="flex: 1 1 auto !important;">
+
+            <div class="d-flex justify-content-center trouble_noselect">
+                <font class="nwarp_text_highlight" style="font-size:40px;width: 100%">N-WARP測試版之問題回報</font>
+            </div>
+            
+            <div class="d-flex justify-content-center">
+                    <hr class="trouble_hr_left">
+            </div>
+
+            <div class="d-flex justify-content-center nwarp_text_normal respond_noselect" style="font-size:20px;font-family: 'Noto Sans TC', sans-serif;">
+                發生無法排除的困難嗎？
+            </div>
+
+            <div class="d-flex justify-content-center nwarp_text_normal respond_noselect" style="font-size:20px;font-family: 'Noto Sans TC', sans-serif;">
+                請告訴N-WARP，我們將竭力為您處理。
+            </div>
+
+            <div class="d-flex justify-content-center trouble_noselect" style="font-size:20px">
+                <font class="nwarp_text_warning" style="font-size:20px">(*為必填)</font>
+            </div>
+        </div>
+    </div>
+    
+    
+<!--Contents-->
+
+    <div id="feedback_outer" class="d-flex nwarp_text_normal trouble_noselect">
+        <!--left panel-->
+
+        <div class="d-flex flex-column flex-fill" style="font-size:20px;width: 100% !important;">
+<% if (refreshtoken == nil or refreshtoken == '') then %> 
+            <!--真實姓名-->
+            <div class="d-flex">
+                <div class="trouble_title">
+                    真實姓名<font color="Red">*</font>
+                </div>
+                <div class="trouble_item">
+                    <input type="text" class="trouble_name_textfield" placeholder="請填寫真實姓名" id="name">
+                </div>
+            </div>
+
+            <!--信箱-->
+            <div class="d-flex">
+                <div class="trouble_title">
+                    信箱<font color="Red">*</font>
+                </div>
+                <div class="trouble_item">
+                    <input type="text" class="trouble_name_textfield" placeholder="請填寫常用信箱" id="email">
+                </div>
+            </div>
+
+            <!--電話-->
+            <div class="d-flex">
+                <div class="trouble_title">
+                    電話<font color="Red">*</font>
+                </div>
+                <div class="trouble_item">
+                    <input type="text" class="trouble_name_textfield" placeholder="請填寫常用電話" id="phone" >
+                </div>
+            </div>
+<% end %>
+            <!--問題分類-->
+            <div class="d-flex">
+                <div class="trouble_title">
+                    問題分類<font color="Red">*</font>
+                </div>
+                <div class="d-flex trouble_item">
+                        <select class="trouble_selects" id="trouble_classify" name="trouble_class">
+                            <option value="" class="trouble_selects" disabled="" selected="">請選擇分類</option>
+                            <option value="11">
+                                無法登入
+                            </option>
+                            <option value="12">
+                                網路連線
+                            </option>
+                            <option value="13">
+                                無法加速
+                            </option>
+                            <option value="14">
+                                介面操作
+                            </option>
+                            <option value="15">
+                                其他
+                            </option>
+                        </select>
+                </div>
+            </div>
+
+            <!--主旨-->
+            <div class="d-flex">
+                <div class="trouble_title">
+                    主旨<font color="Red">*</font>
+                </div>
+                <div class="trouble_item">
+                    <input type="text" class="trouble_name_textfield" placeholder="請輸入主旨" id="trouble_name">
+                </div>
+            </div>
+
+            <!--測試時使用的機台-->
+            <div class="d-flex">
+                <div class="trouble_title">
+                    使用的系統/機台<font color="Red">*</font>
+                </div>
+                <div class="d-flex trouble_item">
+                        <select class="trouble_selects" id="platform_test" name="platform_test">
+                            <option value="" class="trouble_selects" disabled="" selected="">請選擇使用的系統/機台</option>
+                            <option value="01">
+                                PC - Win7
+                            </option>
+                            <option value="02">
+                                PC - Win8
+                            </option>
+                            <option value="03">
+                                PC - Win10
+                            </option>
+                            <option value="04">
+                                PlayStation 4
+                            </option>
+                            <option value="05">
+                                Switch
+                            </option>
+                            <option value="06">
+                                其他
+                            </option>
+                        </select>
+                </div>
+            </div>
+
+        <div class="d-flex nwarp_text_normal trouble_noselect" style="width: width: 100%; font-size:20px">
+            <div class="trouble_title">
+                內容<font color="Red">*</font>
+            </div>
+            <div class="trouble_item">
+            <textarea id="describe" type="text" class="trouble_big_textfield"  placeholder="請輸入內容"  rows="8" name="name"></textarea>
+        </div>
+        </div>
+            
+        <div class="d-flex justify-content-center">
+        <button class="trouble_submit_btn" style="font-size:20px" id="btn_submit">確定</button>
+        </div>
+        </div>
+</div>  
+</div>  
+<script src="https://beta.n-warp.com/router/js/sdk.js"></script>
+<script>
+
+        function submit_msg(log_submit_msg){
+            alert(log_submit_msg, "問題回報");
+            $('#hr_modal').show();
+        }
+
+    function preSubmit() {
+        //error check
+
+        var refreshtoken = "<%=refreshtoken%>";
+        
+        if (document.getElementById("trouble_classify").selectedIndex == 0) {
+            alert("請選擇分類!");
+            return false;
+        }
+        if (document.getElementById("trouble_name").value == "") {
+            alert("請輸入主旨!");
+            return false;
+        }
+
+        if (refreshtoken.length == 0 && document.getElementById("name").value == "") {
+            alert("請輸入真實姓名!");
+            return false;
+        }
+        if (refreshtoken.length == 0 && document.getElementById("phone").value == "") {
+            alert("請輸入電話!");
+            return false;
+        }
+        if (refreshtoken.length == 0 && document.getElementById("email").value == "") {
+            alert("請輸入信箱!");
+            return false;
+        }
+
+        if (document.getElementById("trouble_name").value.split(" ").join("").length == 0) {
+            alert("主旨欄位不可全為空格!");
+            return false;
+        }
+
+        if (clearString(document.getElementById("trouble_name").value).length == 0) {
+            alert("主旨欄位不可全為特殊符號!");
+            return false;
+        }
+        
+        //測試時使用的機台
+        if (document.getElementById("platform_test").selectedIndex == 0) {
+            alert("請選擇測試時使用的機台!");
+            return false;
+        }
+                    
+        if (document.getElementById("describe").value == "") {
+            alert("請輸入內容!");
+            return false;
+        }
+        
+        if (document.getElementById("describe").value.split(" ").join("").length == 0) {
+            alert("內容描述欄位不可全為空格!");
+            return false;
+        }
+
+        if (clearString(document.getElementById("describe").value).length == 0) {
+            alert("內容描述欄位不可全為特殊符號!");
+            return false;
+        }
+
+        return true;
+    }
+
+    function clearString(s){
+        var pattern = new RegExp("[`~!@#$^&*()=|{}':;',\\[\\].<>/?~！@#￥……&*（）&;|{}【】‘；：”“'。，、？，]")
+        var rs = "";
+        for (var i = 0; i < s.length; i++) {
+            rs = rs+s.substr(i, 1).replace(pattern, '');
+            } 
+        return rs;
+    }
+
+    function escapeString(s){
+        var pattern = new RegExp("[`~!@#$^&*()=|{}':;',\\[\\].<>/?~！@#￥……&*（）&;|{}【】‘；：”“'。，、？，]")
+        var rs = "";
+        for (var i = 0; i < s.length; i++) {
+            rs = rs+s.substr(i, 1).replace(pattern,' '+escape(s.substr(i, 1))+' ');
+            }
+        return rs;
+    } 
+
+        var submit_url;
+        var submit_data;
+        $(document).ready(function () {
+
+            $("#btn_submit").on('click', function (event) {
+                if (preSubmit() == true) {
+                new XHR_enc().post('<%=encrypt(url("admin/nwarp/check_status"))%>', { token: '<%=token%>' },
+                function(x,rval){
+                    var network_status = rval.network_status;
+                    if (network_status != '0')
+                    {
+                        alert('連線出錯，請確認您的網路是否正常!');
+                        return;
+                    }
+
+                    var is_exist = rval.is_exist;
+                    console.log(is_exist);
+                    if (is_exist == 0)
+                    {
+                        submit_msg("問題排除資訊正處理中，請稍後再試!!");
+                        return;
+                    }
+
+                    var tok = ","; // do not change easiely
+                    //抓測試機台資料
+                    var platform_test =  document.getElementById("platform_test").options[document.getElementById("platform_test").selectedIndex].text;
+
+                    var trouble_name = escapeString(document.getElementById("trouble_name").value);
+                    var trouble_classify = document.getElementById("trouble_classify").options[document.getElementById("trouble_classify").selectedIndex].text;
+                    var description = escapeString(document.getElementById("describe").value);
+                    new XHR_enc().post('<%=encrypt(url("admin/nwarp/troubleshooting/get_trouble_info"))%>',  {trouble_name: trouble_name, trouble_classify: trouble_classify, platform_test: platform_test, description: description},
+                    function(x,rval) {
+                        submit_data =
+                        "trouble_name=" + trouble_name +
+                        "&trouble_classify="+ trouble_classify+
+                        "&platform_test=" + platform_test +
+                        "&description=" + description;
+
+                        console.log(submit_data);
+
+                        new XHR_enc().post('<%=encrypt(url("admin/nwarp/troubleshooting/getproblemfileName"))%>', { token: '<%=token%>' },
+                        function(x,rv){
+                            console.log("filename");
+                            console.log(rv.problemfilename);
+                            //SDK 初始化
+                            var refreshtoken = "<%=refreshtoken%>";
+                            var accesstoken = "<%=accesstoken%>";
+                            var machineCode = "<%=machineCode%>";
+                            let inst;
+                            WotanRouterApi.create({
+                                    refreshTokenLoader: function() {
+                                                        console.log("refreshtoken");
+                                                        console.log(refreshtoken);
+                                                        console.log(accesstoken);
+
+                                                        return refreshtoken;
+
+                                                        },
+                                    wotanServerType: "beta",
+                                    loginAfterCreate: true,
+                                    apiErrorCallback: function (status, error) {
+                                        console.error(`api error callback: status ${status}, body:${JSON.stringify(error)}`);
+                                            error_status = JSON.parse(`${JSON.stringify(error)}`).error;
+
+                                            if ( "<%=first_login%>" == "true") {
+                                                alert("登入逾期，請重新登入!");
+                                                location.href='./'
+                                            }
+
+                                        //Delete rtoken and member_data
+                                        new XHR_enc().post('<%=encrypt(url("admin/nwarp/main/delToken"))%>', {},
+                                        function(x,rval){
+                                        });
+
+                                    }
+                                })
+                                .then(api => {
+                                        inst = api;
+
+                                        islogined = api.isLogined(api);
+                                        console.log("islogined");
+                                        console.log(islogined);
+
+                                        if (islogined == true) {
+                                            var entry = {'subject':document.getElementById("trouble_name").value, 'content':document.getElementById("describe").value , 'trackId':"/ProblemFeedback/"+ machineCode+"/"+rv.problemfilename};
+                                            inst.createIssue(entry)
+                                            .then(api => {
+                                                console.log("success");
+                                                submit_msg("系統正搜集問題資訊，謝謝您的回報!!");
+                                            })
+                                            .catch(error => {
+                                            // 失敗 可顯示 error.message 給用戶看
+                                                console.log(error.message);
+                                                alert(error.message+"請重新登入!");
+                                            });
+                                        }
+                                        else
+                                        {
+                                            var entry = {'subject':document.getElementById("trouble_name").value,'content':document.getElementById("describe").value,'name':document.getElementById("name").value,'email':document.getElementById("email").value,'phone':document.getElementById("phone").value,  'trackId':"/ProblemFeedback/"+ machineCode+"/"+rv.problemfilename};
+                                            inst.sendReport(entry)
+                                            .then(api => {
+                                                console.log("success");
+                                                submit_msg("系統正搜集問題資訊，謝謝您的回報!!");
+                                            })
+                                            .catch(error => {
+                                            // 失敗 可顯示 error.message 給用戶看
+                                                console.log(error.message);
+                                                alert(error.message);
+                                            });
+                                        }
+
+                                });
+
+                        });
+
+                    });
+
+                });
+            }
+            });
+        });
+
+
+    $('select').on('change', function() {
+        var idx=$(this)[0].selectedIndex;
+        for(var i = 0 ; i < $(this)[0].childElementCount; i ++){
+                $(this)[0][i].className='trouble_selects'
+        }
+            
+        if(idx != 0 || (idx == 0 && $(this)[0].name == 'district')){
+            $(this)[0][idx].className='trouble_selects_selected'
+            $(this).addClass('trouble_selects_selected');
+        }
+        else{
+            $(this).toggleClass('trouble_selects_selected');
+        }
+    });
+
+</script>
+<%+footer%>
