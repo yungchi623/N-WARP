@@ -12,4 +12,5 @@ The project is part of NARP, including data collection and troubleshooting colle
     * number : 123, +123, -123
     * float : 1.23, +1.23, -1.23
     * datetime : seconds since UNIX epoch
+  * other script: get NWARP router information
 * troubleshooting: web page of troubleshooting and controller function.
