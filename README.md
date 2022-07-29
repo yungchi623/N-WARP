@@ -6,5 +6,4 @@ The project is part of NARP, including data collection and troubleshooting colle
 
 # Folder Guideline
 * bigdata: data collection script
-**　１２３
 * troubleshooting: web page of troubleshooting and controller function.
