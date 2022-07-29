@@ -7,5 +7,9 @@ The project is part of NARP, including data collection and troubleshooting colle
 # Guideline
 * bigdata: data collection script
   * write_file.sh: after collection data, programer can insert data to database. 
-    * ex: write_file.sh $FILE_NAME "serialNo","modelName","connectStatus" $serial_no,$model_name,$ping_result
+    * ex: write_file.sh $TABLE_NAME "fieldName1" $fieldValue
+    * string : "abc"
+    * number : 123, +123, -123
+    * float : 1.23, +1.23, -1.23
+    * datetime : seconds since UNIX epoch
 * troubleshooting: web page of troubleshooting and controller function.
